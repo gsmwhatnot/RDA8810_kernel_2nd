@@ -116,7 +116,6 @@ int rda_set_audifc_params(u8 ch, struct rda_audifc_chan_params *params)
 
 audifc_addr_t rda_get_audifc_src_pos(u8 ch)
 {
-    line();
 	return (u32) (hwp_audIfc->ch[ch].cur_ahb_addr);
 }
 
