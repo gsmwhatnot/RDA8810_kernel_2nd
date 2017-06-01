@@ -378,19 +378,8 @@ config MMC_RDA
 	depends on ARCH_RDA
 	help
 	  This selects the RDA SD/SDIO/eMMC Interface.
-	  If no scatter/gather DMA, MMC_BLOCK_BOUNCE would be selected.
 	  say Y or M here.
-
 	  If unsure, say N.
-
-config MMC_RDA_GENERAL_IFC
-	bool "Use general IFC(DMA) transfers only"
-	depends on MMC_RDA
-	select MMC_BLOCK_BOUNCE
-	help
-	  Use general IFC(DMA) to transfer data between memory and hardware.
-	  This feature has to select MMC_BLOCK_BOUNCE option which helps to
-	  allocate bounce buffers.
 
 config MMC_GOLDFISH
 	tristate "goldfish qemu Multimedia Card Interface support"
