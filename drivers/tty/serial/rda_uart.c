@@ -28,17 +28,16 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/io.h>
-#include <linux/wakelock.h>
 #include <plat/devices.h>
 #include <mach/irqs.h>
 #include <mach/ifc.h>
 #include <plat/reg_uart.h>
 #include <plat/reg_sysctrl.h>
-#include "plat/ap_clk.h"
-#include "linux/delay.h"
+#include <plat/ap_clk.h>
+#include <linux/delay.h>
 
 #define RDA_UART_DEV_NAME "ttyS"
-#define SERIAL_RDA_MAJOR 204
+#define SERIAL_RDA_MAJOR 4
 #define SERIAL_RDA_MINOR 64
 
 /*
@@ -50,9 +49,10 @@
 #define RDA_SERIAL_RINGSIZE  1024
 #define RDA_UART_TX_FIFO_SIZE 16
 #define RDA_UART_RX_FIFO_SIZE 64
-#define RDA_UART_DEFAULT_BAUD 921600
+#define RDA_UART_DEFAULT_BAUD 115200
 #define RDA_UART_DEFAULT_DATABITS 8
 #define RDA_UART_DEFAULT_STOPBITS 1
+#define RDA_UART_MAXPORTS 3
 
 #define RDA_UART_IOCTL_MAGIC 'u'
 #define RDA_UART_ENABLE_RX_BREAK_IOCTL		_IO(RDA_UART_IOCTL_MAGIC ,0x01)
@@ -86,14 +86,12 @@ struct rda_uart
 	u32                     dmatxchannel;
 	u32                     irqstatus;
 	volatile u32            ori_status;
-	//REG32                 * cfg_clk;
 	struct circ_buf         rx_ring;
 	u8                      dev_id;
 	u8                      irq_free_flag;
 	u8                      rxbreak_int_enable_flag;
 	u8                      rxbreak_int_enable;
 	u8                      rxbreak_int_detected;
-	struct wake_lock        rxbreak_waklock;
 	void			(*rxbreak_int_handle)(void);
 	u32 			wakeup;
 };
@@ -819,10 +817,6 @@ static void rda_handle_rxerr(struct uart_port *port)
 			//received rx break & get break null data
 			rdaport->rxbreak_int_detected = 2;
 		}
-		if(rdaport->rxbreak_int_enable){
-			if(!rdaport->rxbreak_int_handle)
-				wake_lock_timeout(&rdaport->rxbreak_waklock, HZ*6);
-		}
 	}
 
 	spin_lock_irqsave(&rdaport->lock, flags);
@@ -1129,7 +1123,7 @@ static struct uart_ops rda_uart_ops = {
 	.ioctl          = rda_uart_ioctl,
 };
 
-static struct rda_uart rda_uart_ports[CONFIG_SERIAL_RDA_UART_MAXPORTS];
+static struct rda_uart rda_uart_ports[RDA_UART_MAXPORTS];
 
 #if defined(CONFIG_SERIAL_RDA_UART_CONSOLE)
 static struct rda_uart rda_uart_early;
@@ -1153,9 +1147,6 @@ static void rda_early_console_write(struct console *co, const char *s,
 
 	for (; count; count--, s++){
 		rda_early_console_putc(port, *s);
-		if (*s == '\n'){
-			rda_early_console_putc(port, '\r');
-		}
 	}
 }
 
@@ -1249,7 +1240,7 @@ static int __init rda_uart_console_setup(struct console *co, char *options)
 		early_port->membase = 0;
 	}
 
-	if (co->index < 0 || co->index >= CONFIG_SERIAL_RDA_UART_MAXPORTS) {
+	if (co->index < 0 || co->index >= RDA_UART_MAXPORTS) {
 		return -EINVAL;
 	}
 
@@ -1337,7 +1328,7 @@ static struct uart_driver rda_uart_driver = {
 	.dev_name    = RDA_UART_DEV_NAME,
 	.major       = SERIAL_RDA_MAJOR,
 	.minor       = SERIAL_RDA_MINOR,
-	.nr          = CONFIG_SERIAL_RDA_UART_MAXPORTS,
+	.nr          = RDA_UART_MAXPORTS,
 	.cons        = RDA_UART_CONSOLE,
 };
 
@@ -1352,7 +1343,6 @@ static int rda_init_port(struct rda_uart *rda_port,
 	port->dev = &pdev->dev;
 
 #if defined(CONFIG_SERIAL_RDA_UART_DMA)
-	dev_info(&pdev->dev, "use dma\n");
 	rda_port->use_dma_rx = 1;
 	rda_port->use_dma_tx = 1;
 #else
@@ -1410,7 +1400,6 @@ static int rda_uart_probe(struct platform_device *pdev)
 	struct rda_uart *rda_port = &rda_uart_ports[i];
 	struct uart_port    *port = &rda_port->port;
 	HWP_UART_T *hwp_uart = NULL;
-	u8  tmpWakeLockName[64];
 
 	result = rda_init_port(rda_port,pdev);
 
@@ -1436,10 +1425,7 @@ static int rda_uart_probe(struct platform_device *pdev)
 
 	rda_port->rxbreak_int_detected = 0;
 	hwp_uart->ctrl |= UART_RX_BREAK_LENGTH(13);
-	sprintf(tmpWakeLockName, "rx_break_wake_lock_uart_id_%d", rda_port->dev_id);
-	wake_lock_init(&rda_port->rxbreak_waklock, WAKE_LOCK_SUSPEND, tmpWakeLockName);
 
-	dev_info(&pdev->dev, "rda_uart %d initialized\n",i);
 	return 0;
 }
 
@@ -1460,7 +1446,6 @@ static int rda_uart_remove(struct platform_device *pdev)
 		port->membase = 0;
 		port->mapbase = 0;
 
-		wake_lock_destroy(&rdaport->rxbreak_waklock);
 	}
 
 	return 0;
@@ -1495,7 +1480,7 @@ void rda_uart_register_rxbreak_int_handler(void (*func)(void),u8 dev_id)
 {
 	int i = 0;
 
-	for(i = 0; i < CONFIG_SERIAL_RDA_UART_MAXPORTS; i ++){
+	for(i = 0; i < RDA_UART_MAXPORTS; i ++){
 		if(rda_uart_ports[i].dev_id == dev_id){
 			rda_uart_ports[i].rxbreak_int_handle = func;
 			break;

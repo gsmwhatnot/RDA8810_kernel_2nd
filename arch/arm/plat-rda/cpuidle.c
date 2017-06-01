@@ -251,12 +251,6 @@ struct cpuidle_driver rda_idle_cpu0_driver = {
 		},
 	},
 };
-//#define PL_DEBUG
-#ifdef PL_DEBUG
-#define rda_pm_debug rda_puts_no_irq
-#else
-static void rda_pm_debug(const char *fmt,...) {}
-#endif
 
 
 static unsigned long lp1_counter;
@@ -335,8 +329,6 @@ static void rda_idle_cpu0_do_lp1(void)
 	rda_idle_wakeup_lp1();
 
 	lp1_counter++;
-	if ((lp1_counter & 0xff) == 0)
-		rda_pm_debug("do lp1 %d times\n", lp1_counter);
 }
 
 

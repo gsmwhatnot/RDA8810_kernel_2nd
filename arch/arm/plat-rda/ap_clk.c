@@ -343,10 +343,8 @@ void __apsys_request_power_off(unsigned long flag)
 		 */
 		rda_gic_set_gicc_enabled(1);
 #endif
-		rda_puts_no_irq("power off failed wake from wfi\n");
 	}
 
-	rda_puts_no_irq("power off failed due to irq\n");
 }
 
 int apsys_request_power_off(unsigned long arg)

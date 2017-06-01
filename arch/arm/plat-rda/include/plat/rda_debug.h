@@ -7,7 +7,6 @@
 
 extern unsigned int rda_debug;
 extern int rda_bus_gating;
-void rda_puts_no_irq(const char *fmt, ...);
 
 #define RDA_DBG_ENTER		0x00000001
 #define RDA_DBG_LEAVE		0x00000002
