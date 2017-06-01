@@ -33,8 +33,6 @@
 #include "rda_audifc.h"
 #include "rda_pcm.h"
 
-// parrotgeek1: removed line()s EVERYWHERE
-
 struct rda_pcm_dma_data dma_data;
 
 static const struct snd_pcm_hardware rda_pcm_hardware = {

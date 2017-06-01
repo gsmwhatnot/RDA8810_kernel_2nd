@@ -33,7 +33,6 @@
 #include <plat/pm_ddr.h>
 #include "rda_voice_pcm.h"
 
-#define line() printk("[BUDDYAUDIO] [%s %d]\n", __func__, __LINE__)
 
 // FIXME, same as modem definition (vois_m.h)
 enum {
@@ -89,38 +88,28 @@ static void period_timer_func(unsigned long from_timer)
 	struct snd_pcm_substream *substream = NULL;
 	struct snd_dma_buffer *buf = NULL;
 
-    line();
 	if(voice_msys)
 		substream = voice_msys->private;
 	else {
-    line();
 		printk(KERN_ERR"%s : voice_msys is null, not process. \n", __func__);
 		return ;
 	}
-    line();
 
 	if(substream) {
-    line();
 		buf = &substream->dma_buffer;
 	}
 	else {
-    line();
 		printk(KERN_ERR"%s: substream is null, not process. \n", __func__);
 		return ;
 	}
 
-    line();
 	memset(buf->area + g_current_period*PCM_VOICE_PERIOD_SIZE, 0, PCM_VOICE_PERIOD_SIZE);
-    line();
 	snd_pcm_period_elapsed(substream);
-    line();
 	++g_current_period;
-    line();
 	if(g_current_period >= PCM_VOICE_PERIOD_COUNT)
 		g_current_period = 0;
 	printk(KERN_INFO"mod_timer  %d\n",g_current_period);
 	mod_timer(&period_timer, jiffies+msecs_to_jiffies(PCM_VOICE_PERIOD_TIME_IN_MS));
-    line();
 }
 
 static int vois_RecordStart(u32 *buffer_address)
@@ -128,11 +117,8 @@ static int vois_RecordStart(u32 *buffer_address)
 	int ret = 0;
 	struct client_cmd cmd;
 
-	printk(KERN_INFO ">>>> [%s]\n", __func__);
-
 	*buffer_address = 0;
 
-    line();
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.pmsys_dev = voice_msys;
 	cmd.mod_id = SYS_AUDIO_MOD;
@@ -140,10 +126,7 @@ static int vois_RecordStart(u32 *buffer_address)
 	cmd.pout_data = buffer_address;
 	cmd.out_size = sizeof(*buffer_address);
 	ret = rda_msys_send_cmd(&cmd);
-	printk(KERN_INFO ">>>> [%s], ret [%d] addr [0x%x]\n",
-			__func__, ret, *buffer_address);
 
-    line();
 	return ret;
 }
 
@@ -152,19 +135,13 @@ static int vois_RecordStop(void)
 	int ret = 0;
 	struct client_cmd cmd;
 
-    line();
-	printk(KERN_INFO ">>>> [%s]\n", __func__);
-
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.pmsys_dev = voice_msys;
 	cmd.mod_id = SYS_AUDIO_MOD;
 	cmd.mesg_id = SYS_AUDIO_CMD_AUD_VOICE_RECORD_STOP;
 	cmd.pdata = NULL;
 	cmd.data_size = 0;
-    line();
 	ret = rda_msys_send_cmd(&cmd);
-	printk(KERN_INFO ">>>> [%s], ret [%d] \n", __func__, ret);
-    line();
 
 	return ret;
 }
@@ -176,15 +153,11 @@ static int rda_voice_pcm_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct rda_runtime_data *prtd = runtime->private_data;
 
-    line();
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
-    line();
 	runtime->dma_bytes = params_buffer_bytes(params);
-    line();
 
 	prtd->dma_data = &voice_dma_data;
 
-    line();
 	return 0;
 }
 
@@ -193,23 +166,18 @@ static int rda_voice_pcm_hw_free(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct rda_runtime_data *prtd = runtime->private_data;
 
-    line();
 	if (prtd->dma_data == NULL)
 		return 0;
 
-    line();
 	prtd->dma_data = NULL;
 
-    line();
 	snd_pcm_set_runtime_buffer(substream, NULL);
-    line();
 
 	return 0;
 }
 
 static int rda_voice_pcm_prepare(struct snd_pcm_substream *substream)
 {
-    line();
 	return 0;
 }
 
@@ -218,24 +186,15 @@ static void rda_record_start_work(struct work_struct *work)
 	int ret = 0;
 	u32 ret_addr = 0;
 
-    line();
 	mutex_lock(&record_mutex);
-    line();
 	ret = vois_RecordStart(&ret_addr);
-    line();
 	if (ret) {
-    line();
 		printk(KERN_INFO "rda voice : failed to start voice record. \n");
-    line();
 	}
-    line();
 	g_modem_share_pcm_buf = ioremap(ADDR_MD2AP(ret_addr), PCM_SHARE_BUFFER_SIZE);
-    line();
 	if(g_modem_share_pcm_buf <= 0) {
-    line();
 		printk(KERN_INFO "rda voice : remap shared buffer fail. \n");
 	}
-    line();
 	mutex_unlock(&record_mutex);
 }
 
@@ -243,26 +202,16 @@ static void rda_record_stop_work(struct work_struct *work)
 {
 	unsigned long flags;
 
-    line();
 	mutex_lock(&record_mutex);
-    line();
 	vois_RecordStop();
-    line();
 	if(g_modem_share_pcm_buf)
 		iounmap(g_modem_share_pcm_buf);
-    line();
 	mutex_unlock(&record_mutex);
-    line();
 	mod_timer(&period_timer, 0);
-    line();
 	local_irq_save(flags);
-    line();
 	g_modem_share_pcm_buf = 0;
-    line();
 	g_current_period = 0;
-    line();
 	local_irq_restore(flags);
-    line();
 
 }
 
@@ -270,21 +219,12 @@ static int rda_voice_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	//u32 ret_addr = 0;
 	int ret = 0;
-    line();
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
-    line();
 	case SNDRV_PCM_TRIGGER_RESUME:
-    line();
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-    line();
 		{
-    line();
-			printk(KERN_INFO "rda voice : [start aud pcm] : substream->stream is [%d], cmd is [%d] \n",
-					substream->stream, cmd);
-    line();
 			if(voice_msys) {
-    line();
 				voice_msys->private = (void *)substream;
 				// remap it every time in case of modem "malloc" the mem
 				/*ret = vois_RecordStart(&ret_addr);
@@ -299,22 +239,17 @@ static int rda_voice_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 				}*/
 				//queue start work here to avoid dead lock, since md_sys command  will sleep
 				queue_work(record_wq, &start_work);
-    line();
 			}
 			else
 				printk(KERN_INFO "rda voice : [start aud pcm] :  BUG : no voice_msys here! \n");
 		}
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
-    line();
 	case SNDRV_PCM_TRIGGER_SUSPEND:
-    line();
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-    line();
 		{
 			printk(KERN_INFO "rda8810 voice : [stop aud pcm] : substream->stream is [%d], cmd is [%d] \n",
 					substream->stream, cmd);
-    line();
 			if(voice_msys) {
 				/*vois_RecordStop();
 				if(g_modem_share_pcm_buf)
@@ -327,7 +262,6 @@ static int rda_voice_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 				local_irq_enable();*/
 				//queue stop work here same to start
 				queue_work(record_wq,&stop_work);
-    line();
 				voice_msys->private = (void *)NULL;
 			}
 			else
@@ -338,7 +272,6 @@ static int rda_voice_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		ret = -EINVAL;
 	}
 
-    line();
 	return ret;
 }
 
@@ -349,11 +282,9 @@ static snd_pcm_uframes_t rda_voice_pcm_pointer(struct snd_pcm_substream
 	snd_pcm_uframes_t offset;
 	offset = bytes_to_frames(runtime, g_current_period*PCM_VOICE_PERIOD_SIZE);
 
-    line();
 	if (offset >= runtime->buffer_size)
 		offset = 0;
 
-    line();
 	return offset;
 }
 
@@ -363,36 +294,25 @@ static int rda_voice_pcm_open(struct snd_pcm_substream *substream)
 	struct rda_runtime_data *prtd;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
-    line();
 	snd_soc_set_runtime_hwparams(substream, &rda_voice_pcm_hardware);
 
-    line();
 	/* Ensure that buffer size is a multiple of period size */
 	ret = snd_pcm_hw_constraint_integer(runtime,
 					    SNDRV_PCM_HW_PARAM_PERIODS);
-    line();
 	if (ret < 0) {
-    line();
 		printk(KERN_ERR"rda_voice_pcm_open : snd_pcm_hw_constraint_integer < 0\n");
 		goto out;
 	}
 
 	prtd = kzalloc(sizeof(*prtd), GFP_KERNEL);
-    line();
 	if (prtd == NULL) {
-    line();
 		printk(KERN_ERR"rda_voice_pcm_open : kzalloc == NULL\n");
-    line();
 		ret = -ENOMEM;
 		goto out;
 	}
-    line();
 	spin_lock_init(&prtd->lock);
-    line();
 	runtime->private_data = prtd;
-    line();
 	pm_ddr_get(PM_DDR_AUDIO_IFC_CAPTURE);
-    line();
 	printk(KERN_INFO"rda_voice_pcm_open get pm ddr\n");
 out:
 	return ret;
@@ -402,13 +322,9 @@ static int rda_voice_pcm_close(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
-    line();
 	kfree(runtime->private_data);
-    line();
 	pm_ddr_put(PM_DDR_AUDIO_IFC_CAPTURE);
-    line();
 	printk(KERN_INFO"rda_voice_pcm_close put pm ddr\n");
-    line();
 	return 0;
 }
 
@@ -416,7 +332,6 @@ static int rda_voice_pcm_mmap(struct snd_pcm_substream *substream,
 			    struct vm_area_struct *vma)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
-    line();
 	return dma_mmap_writecombine(substream->pcm->card->dev, vma,
 				     runtime->dma_area,
 				     runtime->dma_addr, runtime->dma_bytes);
@@ -444,18 +359,14 @@ static int rda_voice_pcm_preallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 	struct snd_dma_buffer *buf = &substream->dma_buffer;
 	size_t size = rda_voice_pcm_hardware.buffer_bytes_max;
 
-    line();
 	buf->dev.type = SNDRV_DMA_TYPE_DEV;
-    line();
 	buf->dev.dev = pcm->card->dev;
 	buf->private_data = NULL;
 	buf->area = dma_alloc_writecombine(pcm->card->dev, size,
 					   &buf->addr, GFP_KERNEL);
-    line();
 	if (!buf->area)
 		return -ENOMEM;
 	buf->bytes = size;
-    line();
 	return 0;
 }
 
@@ -464,23 +375,18 @@ static void rda_voice_pcm_free_dma_buffers(struct snd_pcm *pcm)
 	struct snd_pcm_substream *substream;
 	struct snd_dma_buffer *buf;
 	int stream = 0;
-    line();
 	for (stream = 0; stream < 2; stream++) {
-    line();
 		substream = pcm->streams[stream].substream;
 		if (!substream)
 			continue;
 
-    line();
 		buf = &substream->dma_buffer;
 		if (!buf->area)
 			continue;
 
 		dma_free_writecombine(pcm->card->dev, buf->bytes,
 				      buf->area, buf->addr);
-    line();
 		buf->area = NULL;
-    line();
 	}
 }
 
@@ -490,13 +396,11 @@ static int rda_voice_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	struct snd_pcm *pcm = rtd->pcm;
 	int ret = 0;
 
-    line();
 	if (!card->dev->dma_mask)
 		card->dev->dma_mask = &rda_voice_pcm_dmamask;
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = DMA_BIT_MASK(32);
 
-    line();
 	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream) {
 		ret = rda_voice_pcm_preallocate_dma_buffer(pcm,
 							 SNDRV_PCM_STREAM_PLAYBACK);
@@ -504,7 +408,6 @@ static int rda_voice_pcm_new(struct snd_soc_pcm_runtime *rtd)
 			goto out;
 	}
 
-    line();
 	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream) {
 		ret = rda_voice_pcm_preallocate_dma_buffer(pcm,
 							 SNDRV_PCM_STREAM_CAPTURE);
@@ -512,13 +415,11 @@ static int rda_voice_pcm_new(struct snd_soc_pcm_runtime *rtd)
 			goto out;
 	}
 
-    line();
 out:
 	/* free preallocated buffers in case of error */
 	if (ret)
 		rda_voice_pcm_free_dma_buffers(pcm);
 
-    line();
 	return ret;
 }
 
@@ -537,42 +438,31 @@ static int rda_modem_voice_notify(struct notifier_block *nb, unsigned long mesg,
 	unsigned int off = 0;
 	int status = 0;
 
-    line();
 	if (pmesg->mod_id != SYS_AUDIO_MOD) {
 		// printk(KERN_ERR"rda_modem_voice_notify : not audio mod mesg \n");
-    line();
 		return NOTIFY_DONE;
 	}
 
-    line();
 	if(voice_msys)
 		substream = voice_msys->private;
 	else {
 		// printk(KERN_ERR"rda_modem_voice_notify : BUG : voice_msys is null. \n");
-    line();
 		return NOTIFY_OK;
 	}
 
-    line();
 	if(substream) {
-    line();
 		runtime = substream->runtime;
 		buf = &substream->dma_buffer;
-    line();
 	}
 	else {
-    line();
 		printk(KERN_ERR"rda_modem_voice_notify : BUG : substream is null. \n");
-    line();
 		return NOTIFY_OK;
 	}
 
 	if(mesg == SYS_AUDIO_MESG_VOICE_HANDLER_CALLBACK) {
 		status = *((unsigned int*)&(pmesg->param));
-    line();
 		// printk(KERN_ERR"rda_modem_voice_notify : mesg [0x%x] \n", status);
 		if(status == VOIS_STATUS_MID_BUFFER_REACHED || status == VOIS_STATUS_END_BUFFER_REACHED) {
-    line();
 			if(status == VOIS_STATUS_MID_BUFFER_REACHED)
 				off = 0;
 			else
@@ -584,7 +474,6 @@ static int rda_modem_voice_notify(struct notifier_block *nb, unsigned long mesg,
 					g_modem_share_pcm_buf + off, PCM_VOICE_PERIOD_SIZE);
 			snd_pcm_period_elapsed(substream);
 
-    line();
 			++g_current_period;
 
 			if(g_current_period >= PCM_VOICE_PERIOD_COUNT)
@@ -608,65 +497,52 @@ static int rda_modem_voice_notify(struct notifier_block *nb, unsigned long mesg,
 		return NOTIFY_DONE;
 	}
 	else {
-    line();
 		// printk(KERN_ERR"rda_modem_voice_notify : BUG : mesg != SYS_AUDIO_MESG_VOICE_HANDLER_CALLBACK. \n");
 	}
 
-    line();
 	return NOTIFY_OK;
 }
 
 
 static  int rda_voice_pcm_probe(struct platform_device *pdev)
 {
-    line();
 	voice_msys = rda_msys_alloc_device();
-    line();
 	if (!voice_msys) {
 		printk(KERN_ERR"rda_voice_pcm_probe : rda_msys_alloc_device fail. \n");
 		return -ENOMEM;
 	}
-    line();
 
 	voice_msys->module = SYS_AUDIO_MOD;
 	voice_msys->name = "rda-voice-pcm";
 	voice_msys->notifier.notifier_call = rda_modem_voice_notify;
 	voice_msys->private = (void *)NULL;
 
-    line();
 	rda_msys_register_device(voice_msys);
 
-    line();
 	init_timer(&period_timer);
 	period_timer.expires = 0;
 	period_timer.function = period_timer_func;
 	period_timer.data = 0;
 	// add_timer(&period_timer);
 
-    line();
 	INIT_WORK(&start_work,rda_record_start_work);
 	INIT_WORK(&stop_work,rda_record_stop_work);
 	record_wq = create_singlethread_workqueue("record_wq");
 	mutex_init(&record_mutex);
 
-    line();
 	return snd_soc_register_platform(&pdev->dev, &rda_soc_platform);
 }
 
 static int __exit rda_voice_pcm_remove(struct platform_device *pdev)
 {
 	if(voice_msys) {
-    line();
 		rda_msys_unregister_device(voice_msys);
 		rda_msys_free_device(voice_msys);
 	}
 
-    line();
 	del_timer_sync(&period_timer);
 
-    line();
 	snd_soc_unregister_platform(&pdev->dev);
-    line();
 	destroy_workqueue(record_wq);
 	return 0;
 }
@@ -688,15 +564,12 @@ static struct platform_device rda_voice_pcm = {
 
 static int __init rda_voice_pcm_modinit(void)
 {
-    line();
 	platform_device_register(&rda_voice_pcm);
-    line();
 	return platform_driver_register(&rda_voice_pcm_driver);
 }
 
 static void __exit rda_voice_pcm_modexit(void)
 {
-    line();
 	platform_driver_unregister(&rda_voice_pcm_driver);
 }
 

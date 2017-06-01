@@ -42,10 +42,6 @@
 
 #include "rda_aif.h"
 
-#define DEBUG 1
-
-#define line() printk("[BUDDYAUDIO] [%s %d]\n", __func__, __LINE__)
-
 #define AIF_FIX_SAMPLERATE_WHEN_CAPTURE 44100
 
 #define FAST_CLOCK 26000000	//50M
@@ -86,28 +82,20 @@ static int rda_cpu_dai_startup(struct snd_pcm_substream *substream,
 
 	mutex_lock(&aif_cfg->mutex);
 
-    line();
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-    line();
 		if (!aif_cfg->PlayActive) {
-    line();
 			aif_cfg->PlayActive = true;
 		} else {
-    line();
 			ret = -EBUSY;
 		}
 	} else {
-    line();
 		if (!aif_cfg->RecordActive) {
-    line();
 			aif_cfg->RecordActive = true;
 		} else {
-    line();
 			ret = -EBUSY;
 		}
 	}
 
-    line();
 	mutex_unlock(&aif_cfg->mutex);
 
 	return ret;
@@ -118,30 +106,21 @@ static void rda_cpu_dai_shutdown(struct snd_pcm_substream *substream,
 {
 	struct rda_dai *aif_cfg = snd_soc_dai_get_drvdata(dai);
 
-
-    line();
 	mutex_lock(&aif_cfg->mutex);
-    line();
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-    line();
 		aif_cfg->PlayActive = false;
 	} else {
-    line();
 		aif_cfg->RecordActive = false;
 	}
 
-    line();
 	if (!aif_cfg->PlayActive && !aif_cfg->RecordActive) {
-    line();
 		hwp_apAif->ctrl = 0;
 		hwp_apAif->serial_ctrl = AIF_MASTER_MODE_MASTER;
 		hwp_apAif->side_tone = 0;
 		hwp_apAif->Cfg_Aif_Tx_Stb = 0;
 		aif_cfg->OpenStatus = false;
 	}
-    line();
 	mutex_unlock(&aif_cfg->mutex);
-    line();
 }
 
 static int rda_cpu_dai_hw_params(struct snd_pcm_substream *substream,
@@ -157,35 +136,21 @@ static int rda_cpu_dai_hw_params(struct snd_pcm_substream *substream,
 	u32 sample_rate = 0;
 	u32 aif_source_clock = 0;
 
-#ifdef DEBUG
-	printk(KERN_INFO"[%s] \n", __func__);
-#endif
-
-    line();
 	if (!aif_cfg->OpenStatus) {
-    line();
 
 		sample_rate = params_rate(params);
 
-#ifdef DEBUG
-	printk(KERN_INFO"sample_rate : [%d] \n", sample_rate);
-#endif
 		// on rda : aif just config the output params
 		// when input sample_rate is 8000, we should still config aif to playback sample_rate
 		// like android-fixed 44100
-    line();
 #ifdef AIF_FIX_SAMPLERATE_WHEN_CAPTURE
 		if(substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
-    line();
 			printk(KERN_INFO"fix capture sample rate : [%d] \n", AIF_FIX_SAMPLERATE_WHEN_CAPTURE);
 			sample_rate = AIF_FIX_SAMPLERATE_WHEN_CAPTURE;
 		}
-    line();
 #endif
-    line();
 
 		lrck = sample_rate;
-    line();
 
 		switch (sample_rate) {
 		case 8000:
@@ -230,48 +195,37 @@ static int rda_cpu_dai_hw_params(struct snd_pcm_substream *substream,
 			break;
 		}
 
-    line();
 		bck = lrck * bck_lrck_ratio;
 		aif_cfg->AudioBck_div = FAST_CLOCK / bck - 2;
 		aif_cfg->bcklrck_div = bck_lrck_ratio / 2 - 16;
 
-    line();
 		channel_num = params_channels(params);
 
-    line();
 		switch (channel_num) {
 		case 1:
 		case 2:
-    line();
 			aif_cfg->ChannelNb = channel_num;
 			break;
 		default:
-    line();
 			mutex_unlock(&aif_cfg->mutex);
 			return -EINVAL;
 		}
 
-    line();
 		if (sample_rate == 8000 || sample_rate == 12000
 		    || sample_rate == 16000 || sample_rate == 24000
 		    || sample_rate == 32000 || sample_rate == 48000) {
 			aif_source_clock = 24576000;
-    line();
 		} else if (sample_rate == 11025 || sample_rate == 22050
 			   || sample_rate == 44100) {
 			aif_source_clock = 22579200;
-    line();
 		} else {
 			aif_source_clock = 24576000;
-    line();
 		}
 
 		aif_cfg->TxStb_div = aif_source_clock / sample_rate - 2;
 		aif_cfg->MasterFlag = true;
-    line();
 	}
 
-    line();
 	return 0;
 }
 
@@ -282,20 +236,16 @@ static int rda_cpu_dai_prepare(struct snd_pcm_substream *substream,
 
 	u32 serialCfgReg = 0;
 
-    line();
 	if (!aif_cfg->OpenStatus) {
-    line();
 
 		hwp_apAif->Cfg_Aif_Tx_Stb =
 		    AIF_AIF_TX_STB_EN | AIF_AIF_TX_STB_DIV(aif_cfg->TxStb_div);
 
-    line();
 		// config - communicate with codec NOT I2S
 		aif_cfg->ControlReg |=
 		    AIF_PARALLEL_OUT_SET_PARA | AIF_PARALLEL_IN_SET_PARA |
 		    AIF_LOOP_BACK_NORMAL | AIF_TX_STB_MODE;
 
-    line();
 		// FIXME
 		// we assume : 
 		// 1. playback always use channel number 2
@@ -316,13 +266,11 @@ static int rda_cpu_dai_prepare(struct snd_pcm_substream *substream,
 			    AIF_MASTER_MODE_MASTER | AIF_TX_MODE_STEREO_STEREO;
 		//}
 
-    line();
 		hwp_apAif->serial_ctrl = serialCfgReg;
 
 		aif_cfg->OpenStatus = true;
 	}
 
-    line();
 	return 0;
 }
 
@@ -331,20 +279,16 @@ static int rda_cpu_dai_trigger(struct snd_pcm_substream *substream,
 {
 	struct rda_dai *aif_cfg = snd_soc_dai_get_drvdata(dai);
 
-    line();
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 
-    line();
 		switch (cmd) {
 		case SNDRV_PCM_TRIGGER_START:
-    line();
 			hwp_apAif->ctrl =
 			    (aif_cfg->ControlReg | AIF_ENABLE_H_ENABLE) &
 			    ~AIF_TX_OFF;
 			aif_cfg->PlayStatus = true;
 			break;
 		case SNDRV_PCM_TRIGGER_STOP:
-    line();
 			if (!aif_cfg->RecordStatus) {
 				hwp_apAif->ctrl = 0;
 			}
@@ -358,21 +302,16 @@ static int rda_cpu_dai_trigger(struct snd_pcm_substream *substream,
 		switch (cmd) {
 		case SNDRV_PCM_TRIGGER_START:
 			if (!aif_cfg->PlayStatus) {
-    line();
 				hwp_apAif->ctrl =
 				    (aif_cfg->ControlReg | AIF_ENABLE_H_ENABLE)
 				    | AIF_TX_OFF_TX_OFF;
 			}
-    line();
 			aif_cfg->RecordStatus = true;
 			break;
 		case SNDRV_PCM_TRIGGER_STOP:
-    line();
 			if (!aif_cfg->PlayStatus) {
-    line();
 				hwp_apAif->ctrl = 0;
 			}
-    line();
 			aif_cfg->RecordStatus = false;
 			break;
 		default:
@@ -395,16 +334,12 @@ static int rda_cpu_dai_driver_probe(struct snd_soc_dai *dai)
 {
 	struct rda_dai *dmic = snd_soc_dai_get_drvdata(dai);
 
-    line();
 	pm_runtime_enable(dmic->dev);
 
-    line();
 	/* Disable lines while request is ongoing */
 	pm_runtime_get_sync(dmic->dev);
-    line();
 	//omap_dmic_write(dmic, rda_dai_CTRL_REG, 0x00);
 	pm_runtime_put_sync(dmic->dev);
-    line();
 
 	return 0;
 }
@@ -413,7 +348,6 @@ static int rda_cpu_dai_driver_remove(struct snd_soc_dai *dai)
 {
 	struct rda_dai *dmic = snd_soc_dai_get_drvdata(dai);
 
-    line();
 	pm_runtime_disable(dmic->dev);
 
 	return 0;
@@ -451,57 +385,42 @@ static int rda_cpu_dai_platform_driver_probe(struct
 	struct resource *res;
 	int ret;
 
-    line();
 	AifCfg =
 	    devm_kzalloc(&pdev->dev, sizeof(struct rda_dai), GFP_KERNEL);
 	if (!AifCfg)
 		return -ENOMEM;
 
-    line();
 	platform_set_drvdata(pdev, AifCfg);
-    line();
 	AifCfg->dev = &pdev->dev;
-    line();
 
 	mutex_init(&AifCfg->mutex);
 
-    line();
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
-    line();
 		dev_err(AifCfg->dev, "invalid dma resource\n");
 		ret = -ENODEV;
 		goto err_put_clk;
 	}
 
-    line();
 	if (!devm_request_mem_region(&pdev->dev, res->start,
 				     resource_size(res), pdev->name)) {
-    line();
 		dev_err(AifCfg->dev, "memory region already claimed\n");
 		ret = -ENODEV;
 		goto err_put_clk;
 	}
 
-    line();
 	hwp_apAif = devm_ioremap(&pdev->dev, res->start, resource_size(res));
-    line();
 	if (!hwp_apAif) {
-    line();
 		ret = -ENOMEM;
 		goto err_put_clk;
 	}
 
-    line();
 	ret = snd_soc_register_component(&pdev->dev,&rda_component, &rda_cpu_dai_driver, 1);
-    line();
 	if (ret)
 		goto err_put_clk;
 
-    line();
 	return 0;
 
-    line();
 err_put_clk:
 	return ret;
 }
@@ -510,9 +429,7 @@ static int __exit rda_cpu_dai_platform_driver_remove(struct
 							    platform_device
 							    *pdev)
 {
-    line();
 	snd_soc_unregister_component(&pdev->dev);
-    line();
 
 	return 0;
 }
@@ -528,13 +445,11 @@ static struct platform_driver rda_cpu_dai_platform_driver = {
 
 static int __init rda_cpu_dai_modinit(void)
 {
-    line();
 	return platform_driver_register(&rda_cpu_dai_platform_driver);
 }
 
 static void __exit rda_cpu_dai_modexit(void)
 {
-    line();
 	platform_driver_unregister(&rda_cpu_dai_platform_driver);
 }
 

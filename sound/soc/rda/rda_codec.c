@@ -52,7 +52,6 @@
 static int gpio_audio_extpa = -1;
 static int gpio_audio_extpa_1 = -1;//add for external PA
 
-#define DEBUG 1
 
 /* rda_codec_data driver data */
 struct rda_codec_data {
@@ -73,82 +72,6 @@ struct rda_codec_data {
 	SND_ITF_T loop_mode_itf;
 };
 
-#ifdef DEBUG
-
-static void dump_STREAM(HAL_AIF_STREAM_T *st, const char *s)
-{
-    printk("===== Stream %s =============\n", s);
-
-    if (st->startAddress != NULL)
-        printk("start address %p\n", (void *)(unsigned long)st->startAddress);
-        
-    printk("Length %d\n", st->length);
-    printk("SampleRate %d\n", st->sampleRate);
-    printk("Channedl number %d\n", st->channelNb);
-    printk("VoiceQuality %d\n", st->voiceQuality);
-    printk("playsyncwriteRecord %d\n", st->playSyncWithRecord);
-    printk("============================================\n");   
-}
-
-static void dump_CFG(AUD_LEVEL_T *cfg, const char *s)
-{
-    printk("============= CFG %s =================\n", s);
-    printk("SpeckLevel %d\n", cfg->spkLevel);
-    printk("MicLevel %d\n", cfg->micLevel);
-    printk("SideLevel %d\n", cfg->sideLevel);
-    printk("ToneLevel %d\n", cfg->toneLevel);
-    printk("======================================\n");    
-}
-
-static void dump_CODEC(struct rda_codec_data *p, const char *s)
-{
-    printk("================ CodeC Disp %s ================\n", s);
-    if (p->io_base != NULL)
-        printk("IO_BASE %p\n", (void *)(unsigned long)p->io_base);
-    if (p->codec_msys->name != NULL) {
-        printk("Client name %s\n", p->codec_msys->name);    
-    }    
-    printk("Codec sample rate %d\n", p->in_sample_rate);
-    printk("Codec channel number %d\n", p->in_channel_nb);
-    printk("Codec out sample %d\n", p->out_sample_rate);
-    printk("Codec out channel number %d\n", p->out_channel_nb);
-    printk("Codec ITF %d\n", p->itf);
-    printk("Codec APP MODE %d\n", p->CodecAppMode);
-    printk("Codec Codec_is_open %d\n", p->codec_is_open);
-    printk("Codec loop_mode_itf %d\n", p->loop_mode_itf);
-    dump_STREAM(&p->stream, "CODEC_INTER");
-    dump_CFG(&p->cfg, "CODEC_INTER");
-    
-}
-#define line() printk("%s %d\n", __func__, __LINE__)
-
-static void aud_Dump(SND_ITF_T itf, HAL_AIF_STREAM_T *stream, AUD_LEVEL_T *cfg)
-{
-	printk(KERN_INFO "############################### \n");
-	printk(KERN_INFO "itf is [%d] \n", itf);
-	if(stream != NULL) {
-		printk(KERN_INFO "stream->sampleRate is [%d] \n", stream->sampleRate);
-		printk(KERN_INFO "stream->channelNb is [%d] \n", stream->channelNb);
-		printk(KERN_INFO "stream->voiceQuality is [%d] \n", (int)(unsigned long)stream->voiceQuality);
-		printk(KERN_INFO "stream->playSyncWithRecord is [%d] \n", 
-                    (int)(unsigned long)stream->playSyncWithRecord);
-	}
-	else {
-		printk(KERN_INFO "stream is NULL!!! \n");
-	}
-	if(cfg != NULL) {
-		printk(KERN_INFO "cfg->spkLevel is [%d] \n", cfg->spkLevel);
-		printk(KERN_INFO "cfg->micLevel is [%d] \n", cfg->micLevel);
-		printk(KERN_INFO "cfg->sidlevel is [%d] \n", cfg->sideLevel);
-		printk(KERN_INFO "cfg->toneLevel is [%d] \n", cfg->toneLevel);
-	}
-	else {
-		printk(KERN_INFO "cfg is NULL!!! \n");
-	}
-
-	printk(KERN_INFO "############################### \n");
-}
-#endif
 
 static int aud_StreamStart(SND_ITF_T itf, HAL_AIF_STREAM_T *stream, AUD_LEVEL_T* cfg, 
 		struct rda_codec_data* codec_data)
@@ -157,9 +80,6 @@ static int aud_StreamStart(SND_ITF_T itf, HAL_AIF_STREAM_T *stream, AUD_LEVEL_T*
 	u8 __dat[sizeof(SND_ITF_T) + sizeof(HAL_AIF_STREAM_T) + sizeof(AUD_LEVEL_T)] = {0};
 	struct client_cmd codec_cmd;
 
-#ifdef DEBUG
-	aud_Dump(itf, stream, cfg);
-#endif
 
 	memcpy((u8 *)&__dat, &itf,
 			sizeof(SND_ITF_T));
@@ -174,18 +94,9 @@ static int aud_StreamStart(SND_ITF_T itf, HAL_AIF_STREAM_T *stream, AUD_LEVEL_T*
 	codec_cmd.mesg_id = SYS_AUDIO_CMD_AUD_STREAM_START;
 	codec_cmd.pdata = (void *)&__dat;
 	codec_cmd.data_size = sizeof(__dat);
-	printk(" 3333 3333 3333 3333  aud_StreamStart 1  ret = %d  \r\n ", ret);
 
-    dump_CFG(cfg, __func__);
-    dump_CODEC(codec_data, __func__);
 
 	ret = rda_msys_send_cmd(&codec_cmd);
-	printk(" 3333 3333 3333 3333  aud_StreamStart 2  ret = %d  \r\n ", ret);
-
-	if ( ret )
-		printk(KERN_INFO ">>>> [%s], ret [%d] \n", __func__, ret);
-	else
-		rda_dbg_audio(">>>> [%s], ret [%d] \n", __func__, ret);
 
 	return ret;
 }
@@ -197,9 +108,6 @@ static int aud_StreamRecord(SND_ITF_T itf, HAL_AIF_STREAM_T *stream, AUD_LEVEL_T
 	u8 __dat[sizeof(SND_ITF_T) + sizeof(HAL_AIF_STREAM_T) + sizeof(AUD_LEVEL_T)] = {0};
 	struct client_cmd codec_cmd;
 
-#ifdef DEBUG
-	aud_Dump(itf, stream, cfg);
-#endif
 
 	memcpy((u8 *)&__dat, &itf, sizeof(SND_ITF_T));
 	memcpy((u8 *)&__dat + sizeof(SND_ITF_T), stream,
@@ -213,14 +121,7 @@ static int aud_StreamRecord(SND_ITF_T itf, HAL_AIF_STREAM_T *stream, AUD_LEVEL_T
 	codec_cmd.mesg_id = SYS_AUDIO_CMD_AUD_STREAM_RECORD;
 	codec_cmd.pdata = (void *)&__dat;
 	codec_cmd.data_size = sizeof(__dat);
-    dump_CFG(cfg, __func__);
-    dump_CODEC(codec_data, __func__);
 	ret = rda_msys_send_cmd(&codec_cmd);
-	if ( ret )
-		printk(KERN_INFO ">>>> [%s], ret [%d] \n", __func__, ret);
-	else
-		rda_dbg_audio(">>>> [%s], ret [%d] \n", __func__, ret);
-
 
 	return ret;
 }
@@ -240,16 +141,8 @@ static int aud_StreamStop(SND_ITF_T itf,
 	codec_cmd.mesg_id = SYS_AUDIO_CMD_AUD_STREAM_STOP;
 	codec_cmd.pdata = (void *)&__dat;
 	codec_cmd.data_size = sizeof(__dat);
-	printk(" 3333 3333 3333 3333  aud_StreamStop 1  ret = %d  \r\n ", ret);
 
-    dump_CODEC(codec_data, __func__);
 	ret = rda_msys_send_cmd(&codec_cmd);
-	printk(" 3333 3333 3333 3333  aud_StreamStop 2  ret = %d  \r\n ", ret);
-
-	if ( ret )
-		printk(KERN_INFO ">>>> [%s], ret [%d] \n", __func__, ret);
-	else
-		rda_dbg_audio(">>>> [%s], ret [%d] \n", __func__, ret);
 
 	return ret;
 }
@@ -261,9 +154,6 @@ static int aud_Setup(SND_ITF_T itf, AUD_LEVEL_T* cfg,
 	u8 __dat[sizeof(SND_ITF_T) + sizeof(AUD_LEVEL_T)] = {0};
 	struct client_cmd codec_cmd;
 
-#ifdef DEBUG
-	aud_Dump(itf, NULL, cfg);
-#endif
 
 	memcpy((u8 *)&__dat, &itf, sizeof(SND_ITF_T));
 	memcpy((u8 *)&__dat + sizeof(SND_ITF_T), cfg, sizeof(AUD_LEVEL_T));
@@ -274,17 +164,8 @@ static int aud_Setup(SND_ITF_T itf, AUD_LEVEL_T* cfg,
 	codec_cmd.mesg_id = SYS_AUDIO_CMD_AUD_SETUP;
 	codec_cmd.pdata = (void *)&__dat;
 	codec_cmd.data_size = sizeof(__dat);
-	printk(" 3333 3333 3333 3333  aud_Setup 1  ret = %d  \r\n ", ret);
 
-    dump_CFG(cfg, __func__);
-    dump_CODEC(codec_data , __func__);
 	ret = rda_msys_send_cmd(&codec_cmd);
-	printk(" 3333 3333 3333 3333  aud_Setup 2  ret = %d  \r\n ", ret);
-
-	if ( ret )
-		printk(KERN_DEBUG ">>>> [%s], ret [%d] \n", __func__, ret);
-	else
-		rda_dbg_audio(">>>> [%s], ret [%d] \n", __func__, ret);
 
 
 	return ret;
@@ -298,7 +179,6 @@ static int aud_LoudspeakerWithEarpiece(u8 on,
 	struct client_cmd codec_cmd;
 
 	__dat = on;
-    printk("%s ON %d\n", __func__, on);
 
 	memset(&codec_cmd, 0, sizeof(codec_cmd));
 	codec_cmd.pmsys_dev = codec_data->codec_msys;
@@ -306,12 +186,7 @@ static int aud_LoudspeakerWithEarpiece(u8 on,
 	codec_cmd.mesg_id = SYS_AUDIO_CMD_AUD_LOUDSPEAKER_WITH_EARPIECE;
 	codec_cmd.pdata = (void *)&__dat;
 	codec_cmd.data_size = sizeof(__dat);
-    dump_CODEC(codec_data , __func__);
 	ret = rda_msys_send_cmd(&codec_cmd);
-	if ( ret )
-		printk(KERN_INFO ">>>> [%s], ret [%d] \n", __func__, ret);
-	else
-		rda_dbg_audio(">>>> [%s], ret [%d] \n", __func__, ret);
 
 	return ret;
 }
@@ -325,24 +200,14 @@ static int aud_ForceReceiverMicSelection(u8 on,
 
 	__dat = on;
 
-    printk("%s ON %d\n", __func__, on);
-
 	memset(&codec_cmd, 0, sizeof(codec_cmd));
 	codec_cmd.pmsys_dev = codec_data->codec_msys;
 	codec_cmd.mod_id = SYS_AUDIO_MOD;
 	codec_cmd.mesg_id = SYS_AUDIO_CMD_AUD_FORCE_RECEIVER_MIC_SELECTION;
 	codec_cmd.pdata = (void *)&__dat;
 	codec_cmd.data_size = sizeof(__dat);
-	printk(" 3333 3333 3333 3333  aud_ForceReceiverMicSelection 1  ret = %d  \r\n ", ret);
 
-    dump_CODEC(codec_data, __func__);
 	ret = rda_msys_send_cmd(&codec_cmd);
-	printk(" 3333 3333 3333 3333  aud_ForceReceiverMicSelection 2  ret = %d  \r\n ", ret);
-
-	if ( ret )
-		printk(KERN_INFO ">>>> [%s], ret [%d] \n", __func__, ret);
-	else
-		rda_dbg_audio(">>>> [%s], ret [%d] \n", __func__, ret);
 
 	return ret;
 }
@@ -354,7 +219,6 @@ static int aud_CodecAppMode(u32 mode,
 	u32 __dat = 0;
 	struct client_cmd codec_cmd;
 	
-    printk("%s MODE %d\n", __func__, mode);
 	__dat = mode;
 	memset(&codec_cmd, 0, sizeof(codec_cmd));
 	codec_cmd.pmsys_dev = codec_data->codec_msys;
@@ -363,18 +227,9 @@ static int aud_CodecAppMode(u32 mode,
 	codec_cmd.pdata = (void *)&__dat;
 	codec_cmd.data_size = sizeof(__dat);
 
-	printk(" 3333 3333 3333 3333  aud_CodecAppMode1  ret = %d  \r\n ", ret);
 
-    dump_CODEC(codec_data, __func__);
 	ret = rda_msys_send_cmd(&codec_cmd);
 	
-	printk(" 3333 3333 3333 3333  aud_CodecAppMode2  ret = %d  \r\n ", ret);
-
-	if ( ret )
-		printk(KERN_INFO ">>>> [%s], ret [%d] \n", __func__, ret);
-	else
-		rda_dbg_audio(">>>> [%s], ret [%d] \n", __func__, ret);
-
 	return ret;
 		
 }
@@ -385,12 +240,6 @@ static int aud_TestModeSetup(SND_ITF_T itf, HAL_AIF_STREAM_T *stream, AUD_LEVEL_
 	int ret = 0;
 	u8 __dat[sizeof(SND_ITF_T) + sizeof(HAL_AIF_STREAM_T) + sizeof(AUD_LEVEL_T) + sizeof(AUD_TEST_T)] = {0};
 	struct client_cmd codec_cmd;
-
-#ifdef DEBUG
-	aud_Dump(itf, stream, cfg);
-#endif
-    printk("%s AUD_TEST_T mode %d\n", __func__, mode);
-    printk("%s _data %d\n", __func__, __dat);
 
 	memcpy((u8 *)&__dat, &itf, sizeof(SND_ITF_T));
 	memcpy((u8 *)&__dat + sizeof(SND_ITF_T), stream,
@@ -405,25 +254,14 @@ static int aud_TestModeSetup(SND_ITF_T itf, HAL_AIF_STREAM_T *stream, AUD_LEVEL_
 	codec_cmd.mesg_id = SYS_AUDIO_CMD_AUD_TEST_MODE_SETUP;
 	codec_cmd.pdata = (void *)&__dat;
 	codec_cmd.data_size = sizeof(__dat);
-	printk(" 3333 3333 3333 3333  aud_TestModeSetup 1  ret = %d  \r\n ", ret);
-    dump_CODEC(codec_data, __func__);
-    dump_CFG(cfg, __func__);
 
 	ret = rda_msys_send_cmd(&codec_cmd);
-
-	printk(" 3333 3333 3333 3333  aud_TestModeSetup 2  ret = %d  \r\n ", ret);
-
-	if ( ret )
-		printk(KERN_INFO ">>>> [%s], ret [%d] \n", __func__, ret);
-	else
-		rda_dbg_audio(">>>> [%s], ret [%d] \n", __func__, ret);
 
 	return ret;
 }
 static int ctrl_ext_get_reg(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
-    line();
 	return 0;
 }
 static int rda_codec_get_open_status(struct snd_kcontrol *kcontrol,
@@ -432,18 +270,13 @@ static int rda_codec_get_open_status(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct rda_codec_data *codec_data = snd_soc_codec_get_drvdata(codec);
 
-	printk(KERN_INFO"rda codec : codec_data->codec_is_open %d \n", codec_data->codec_is_open);
-
 	ucontrol->value.integer.value[0] = codec_data->codec_is_open;
-	
-	printk(" 3333 3333 3333 3333  rda_codec_get_open_status  status = %d \r\n ", ucontrol->value.integer.value[0]);
 
 	return 0;
 }
 static int ctrl_ext_set_reg(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
-    line();
 	return 0;
 }
 static int rda_codec_set_playback_volume(struct snd_kcontrol *kcontrol,
@@ -457,8 +290,6 @@ static int rda_codec_set_playback_volume(struct snd_kcontrol *kcontrol,
 
 	codec_data->cfg.spkLevel = volume;
 	
-	printk(" 3333 3333 3333 3333  rda_codec_set_playback_volume  volume = %d \r\n ", volume);
-
 	return 0;
 }
 static int rda_codec_set_capture_volume(struct snd_kcontrol *kcontrol,
@@ -471,10 +302,7 @@ static int rda_codec_set_capture_volume(struct snd_kcontrol *kcontrol,
 	volume = ucontrol->value.integer.value[0];
 
 	codec_data->cfg.micLevel = volume;
-    dump_CODEC(codec_data, __func__);
 	
-	printk(" 3333 3333 3333 3333  rda_codec_set_capture_volume  volume = %d \r\n ", volume);
-
 	return 0;
 }
 
@@ -488,9 +316,6 @@ static int rda_codec_set_itf(struct snd_kcontrol *kcontrol,
 	itf = ucontrol->value.integer.value[0];
 
 	codec_data->itf = itf;
-
-	printk(" 3333 3333 3333 3333  rda_codec_set_itf  itf = %d \r\n ", itf);
-    dump_CODEC(codec_data, __func__);
 
 	return 0;
 }
@@ -508,9 +333,6 @@ static int rda_codec_codec_app_mode(struct snd_kcontrol *kcontrol,
 	codec_data->CodecAppMode = mode;
 
 	ret = aud_CodecAppMode(mode, codec_data);
-    dump_CODEC(codec_data, __func__);
-	printk(" %s ret %d\n", __func__, ret);
-	printk(" 3333 3333 3333 3333  rda_codec_codec_app_mode  mode = %d \r\n ", mode);
 
 	return (ret!=0?-1:0);
 }
@@ -526,16 +348,12 @@ static int rda_codec_start_play(struct snd_kcontrol *kcontrol,
 	codec_data->stream.channelNb  = codec_data->out_channel_nb;
 
 
-    dump_CODEC(codec_data, __func__);
 	ret = aud_StreamStart(codec_data->itf, &(codec_data->stream), 
 			&(codec_data->cfg), codec_data);
-    dump_CODEC(codec_data, __func__);
 
 	if(!ret) {
 		codec_data->codec_is_open = TRUE;
 	}
-
-printk(" 3333 3333 3333 3333 rda_codec_start_play \r\n ");
 
 	return (ret!=0?-1:0);
 }
@@ -548,13 +366,10 @@ static int rda_codec_stop(struct snd_kcontrol *kcontrol,
 	struct rda_codec_data *codec_data = snd_soc_codec_get_drvdata(codec);
 
 	ret = aud_StreamStop(codec_data->itf, codec_data);
-    dump_CODEC(codec_data, __func__);
 
 	if(!ret) {
 		codec_data->codec_is_open = FALSE;
 	}
-    dump_CODEC(codec_data, __func__);
-	printk(" 3333 3333 3333 3333  rda_codec_stop \r\n ");
 
 	return (ret!=0?-1:0);
 }
@@ -571,12 +386,9 @@ static int rda_codec_start_record(struct snd_kcontrol *kcontrol,
 	ret = aud_StreamRecord(codec_data->itf, &(codec_data->stream), 
 			&(codec_data->cfg), codec_data);
 
-    dump_CODEC(codec_data, __func__);
 	if(!ret) {
 		codec_data->codec_is_open = TRUE;
 	}
-	printk(" 3333 3333 3333 3333  rda_codec_start_record \r\n ");
-    dump_CODEC(codec_data, __func__);
 
 	return (ret!=0?-1:0);
 }
@@ -591,10 +403,6 @@ static int rda_codec_set_in_channel_number(struct snd_kcontrol *kcontrol,
 	val = ucontrol->value.integer.value[0];
 
 	codec_data->in_channel_nb = val;
-    dump_CODEC(codec_data, __func__);
-
-	printk(" 3333 3333 3333 3333  rda_codec_set_in_channel_number  val = %d \r\n ", val);
-
 
 	return 0;
 }
@@ -609,10 +417,6 @@ static int rda_codec_set_in_sample_rate(struct snd_kcontrol *kcontrol,
 	val = ucontrol->value.integer.value[0];
 
 	codec_data->in_sample_rate = val;
-    dump_CODEC(codec_data, __func__);
-
-	printk(" 3333 3333 3333 3333  rda_codec_set_in_sample_rate  val = %d \r\n ", val);
-
 
 	return 0;
 }
@@ -627,10 +431,6 @@ static int rda_codec_set_out_channel_number(struct snd_kcontrol *kcontrol,
 	val = ucontrol->value.integer.value[0];
 
 	codec_data->out_channel_nb = val;
-    dump_CODEC(codec_data, __func__);
-
-	printk(" 3333 3333 3333 3333  rda_codec_set_out_channel_number  val = %d \r\n ", val);
-
 
 	return 0;
 }
@@ -645,10 +445,6 @@ static int rda_codec_set_out_sample_rate(struct snd_kcontrol *kcontrol,
 	val = ucontrol->value.integer.value[0];
 
 	codec_data->out_sample_rate = val;
-    dump_CODEC(codec_data, __func__);
-
-	printk(" 3333 3333 3333 3333  rda_codec_set_out_sample_rate  val = %d \r\n ", val);
-
 
 	return 0;
 }
@@ -691,10 +487,6 @@ static int rda_codec_set_spksel(struct snd_kcontrol *kcontrol,
 		ret = aud_LoudspeakerWithEarpiece(FALSE, codec_data);
 	}
 
-    dump_CODEC(codec_data, __func__);
-	printk(" 3333 3333 3333 3333  rda_codec_set_spksel  spk = %d \r\n ", spk);
-
-
 	return (ret!=0?-1:0);
 }
 static int rda_codec_force_mainmic(struct snd_kcontrol *kcontrol,
@@ -707,10 +499,7 @@ static int rda_codec_force_mainmic(struct snd_kcontrol *kcontrol,
 	on = ucontrol->value.integer.value[0];
 
 	ret = aud_ForceReceiverMicSelection(on, codec_data);
-    dump_CODEC(codec_data, __func__);
 	
-	printk(" 3333 3333 3333 3333  rda_codec_force_mainmic  on = %d \r\n ", on);
-
 	return (ret!=0?-1:0);
 }
 static int rda_codec_mute_mic(struct snd_kcontrol *kcontrol,
@@ -724,9 +513,6 @@ static int rda_codec_mute_mic(struct snd_kcontrol *kcontrol,
 
 	codec_data->cfg.micLevel = mute;
 
-    dump_CODEC(codec_data, __func__);
-	printk(" 3333 3333 3333 3333  rda_codec_mute_mic  mute = %d \r\n ", mute);
-
 	return 0;
 }
 static int rda_codec_set_commit_setup(struct snd_kcontrol *kcontrol,
@@ -737,9 +523,6 @@ static int rda_codec_set_commit_setup(struct snd_kcontrol *kcontrol,
 	struct rda_codec_data *codec_data = snd_soc_codec_get_drvdata(codec);
 
 	ret = aud_Setup(codec_data->itf, &(codec_data->cfg), codec_data);
-
-	printk(" 3333 3333 3333 3333  rda_codec_set_commit_setup   \r\n ");
-    dump_CODEC(codec_data, __func__);
 
 	return (ret!=0?-1:0);
 }
@@ -755,7 +538,6 @@ static int rda_audio_loop_mode(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct rda_codec_data *codec_data = snd_soc_codec_get_drvdata(codec);
 
-    dump_CODEC(codec_data, __func__);
 	// 1. mode
 	mode = ucontrol->value.integer.value[0];
 	// 2. itf & cfg
@@ -802,7 +584,6 @@ static int rda_audio_loop_mode(struct snd_kcontrol *kcontrol,
 			break;
 	}
 
-    dump_CODEC(codec_data, __func__);
 	codec_data->loop_mode_itf = itf;
 	// 3. stream
 	stream.startAddress = NULL;
@@ -815,9 +596,6 @@ static int rda_audio_loop_mode(struct snd_kcontrol *kcontrol,
 	stream.endHandler   = NULL;
 
 	ret = aud_TestModeSetup(itf, &stream, &cfg, mode, codec_data);
-
-	printk(" 3333 3333 3333 3333  rda_audio_loop_mode \r\n ");
-    dump_CODEC(codec_data, __func__);
 
 	return (ret!=0?-1:0);
 }
@@ -886,7 +664,6 @@ static int rda_codec_dai_hw_params(struct snd_pcm_substream *substream,
 	u32 sample_rate = params_rate(params);
 
 	codec_data->stream.sampleRate = sample_rate;
-    dump_CODEC(codec_data, __func__);
 
 	return ret;
 }
@@ -927,7 +704,6 @@ static int rda_codec_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 static int rda_codec_dai_startup(struct snd_pcm_substream *substream,
 		struct snd_soc_dai *dai)
 {
-
 	return 0;
 }
 
@@ -1009,7 +785,6 @@ static int rda_codec_suspend(struct snd_soc_codec *codec)
 {
 	rda_codec_set_bias_level(codec, SND_SOC_BIAS_OFF);
 
-
 	return 0;
 }
 
@@ -1017,7 +792,6 @@ static int rda_codec_resume(struct snd_soc_codec *codec)
 {
 	snd_soc_cache_sync(codec);
 	rda_codec_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
-
 
 	return 0;
 }
@@ -1053,7 +827,6 @@ static int rda_modem_codec_notify(struct notifier_block *nb, unsigned long mesg,
 	if (mesg != SYS_GEN_MESG_RTC_TRIGGER) {
 		return NOTIFY_DONE;
 	}
-    dump_CODEC(codec_data, __func__);
 
 	return NOTIFY_OK;
 }
@@ -1063,7 +836,6 @@ static int rda_codec_probe(struct snd_soc_codec *codec)
 	struct rda_codec_data *codec_data = NULL;
 
 	codec_data = snd_soc_codec_get_drvdata(codec);
-    dump_CODEC(codec_data, __func__);
 
 	if(codec_data == NULL) {
 		printk(KERN_INFO"NULL codec_data is when probe, error \n");
@@ -1074,7 +846,6 @@ static int rda_codec_probe(struct snd_soc_codec *codec)
 
 	snd_soc_add_codec_controls(codec, rda_codec_snd_controls,
 			ARRAY_SIZE(rda_codec_snd_controls));
-    dump_CODEC(codec_data, __func__);
 
 	return 0;
 }
@@ -1086,7 +857,6 @@ static int rda_codec_remove(struct snd_soc_codec *codec)
 	codec_data = snd_soc_codec_get_drvdata(codec);
 
 	rda_codec_set_bias_level(codec, SND_SOC_BIAS_OFF);
-    dump_CODEC(codec_data, __func__);
 
 	return 0;
 }
@@ -1134,7 +904,6 @@ static int rda_codec_platform_probe(struct platform_device *pdev)
 	codec_data->codec_msys->private = (void *)codec_data;
 
 	rda_msys_register_device(codec_data->codec_msys);
-    dump_CODEC(codec_data, __func__);
 
 	ret = snd_soc_register_codec(&pdev->dev,
 			&soc_codec_dev_rda_codec_driver,
@@ -1172,7 +941,6 @@ static int rda_codec_platform_probe(struct platform_device *pdev)
 		}
 	} else
 		printk(KERN_INFO"FAILED TO GET EXTPA_1 RESOURCE !");
-    dump_CODEC(codec_data, __func__);
 
 	return ret;
 err_request_gpio:
