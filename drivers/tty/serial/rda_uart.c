@@ -1277,48 +1277,6 @@ static struct console rda_uart_console = {
 
 #endif /* CONFIG_RDA_UART_CONSOLE */
 
-static void rda_raw_puts_noirq(const char *s, unsigned int count)
-{
-	rda_uart_console_write(RDA_UART_CONSOLE, s, count);
-}
-
-#ifdef CONFIG_PRINTK_TIME
-static int rda_puts_add_time(char *buf)
-{
-	unsigned long long ts;
-	unsigned long rem_nsec;
-
-	ts = local_clock();
-
-	rem_nsec = do_div(ts, 1000000000);
-
-	if (!buf)
-		return snprintf(NULL, 0, "[%5lu.000000] ", (unsigned long)ts);
-
-	return sprintf(buf, "[%5lu.%06lu] ",
-		       (unsigned long)ts, rem_nsec / 1000);
-
-}
-#else
-static int rda_puts_add_time(*buf) {return 0;}
-#endif
-
-
-void rda_puts_no_irq(const char *fmt, ...)
-{
-	char buf[256];
-	va_list args;
-	int i;
-
-	i = rda_puts_add_time(buf);
-	va_start(args, fmt);
-	i += vsnprintf(buf+i, 255-i, fmt, args);
-	va_end(args);
-
-	rda_raw_puts_noirq(buf, i);
-}
-
-
 /*
  *	Define the rda_uart UART driver structure.
  */
