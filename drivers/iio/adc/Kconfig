@@ -133,11 +133,6 @@ config MAX1363
 	  max11646, max11647) Provides direct access via sysfs and buffered
 	  data via the iio dev interface.
 
-config RDA_ADC
-	tristate "RDA Microelectronics ADC driver"
-	help
-	  Say yes here to build support for RDA Microelectronics ADC.
-
 config TI_ADC081C
 	tristate "Texas Instruments ADC081C021/027"
 	depends on I2C
