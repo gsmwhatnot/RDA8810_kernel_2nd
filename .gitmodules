@@ -1,3 +1,0 @@
-[submodule "drivers/net/wireless/rdaw80211"]
-	path = drivers/net/wireless/rdaw80211
-	url = https://github.com/RDA8810/rdaw80211
